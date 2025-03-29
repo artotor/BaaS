@@ -22,52 +22,93 @@
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
+# ACME Backend as a Service (BaaS)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+A platform that allows users to create and manage projects with their own PostgreSQL databases and automatically generated GraphQL APIs.
 
-## Installation
+## Monorepo Structure
+
+This project is organized as a monorepo with the following packages:
+
+- `packages/admin-backend`: NestJS backend that manages users, projects, and generates GraphQL APIs using PostGraphile
+- `packages/admin-frontend`: React frontend for the admin interface
+
+## Features
+
+- User authentication with JWT
+- Project creation and management
+- Automatic database provisioning for each project
+- Auto-generated GraphQL API for each project using PostGraphile
+- API Explorer with GraphQL Playground
+
+## Prerequisites
+
+- Node.js (v16+)
+- PostgreSQL (v14+)
+- Redis
+- pnpm (for package management)
+
+## Getting Started
+
+1. Clone the repository
+2. Install dependencies:
 
 ```bash
-$ pnpm install
+pnpm install
 ```
 
-## Running the app
+3. Configure environment variables:
+
+Copy the example environment file and adjust as needed:
 
 ```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+cp packages/admin-backend/.env.example packages/admin-backend/.env
 ```
 
-## Test
+4. Start the development servers:
 
 ```bash
-# unit tests
-$ pnpm run test
+# Run both backend and frontend
+pnpm dev
 
-# e2e tests
-$ pnpm run test:e2e
+# Run only backend
+pnpm dev:backend
 
-# test coverage
-$ pnpm run test:cov
+# Run only frontend
+pnpm dev:frontend
 ```
 
-## Support
+The backend will be available at http://localhost:6868 and the frontend at http://localhost:3002.
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Building for Production
 
-## Stay in touch
+```bash
+pnpm build
+```
 
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+This will build both the backend and frontend packages.
+
+## Project Structure
+
+### Backend (`packages/admin-backend`)
+
+- `src/` - NestJS application source code
+  - `auth/` - Authentication and authorization modules
+  - `entities/` - TypeORM entity definitions
+  - `middlewares/` - Middleware including GraphQL generator
+  - `projects/` - Project management module
+  - `redis/` - Redis service for caching
+  - `plugins/` - PostGraphile plugins
+
+### Frontend (`packages/admin-frontend`)
+
+- `src/` - React application source code
+  - `components/` - Reusable React components
+  - `pages/` - Main application pages
+  - `services/` - API service clients
+  - `hooks/` - Custom React hooks
+  - `store/` - State management
 
 ## License
 
-Nest is [MIT licensed](LICENSE).
+[MIT](LICENSE)

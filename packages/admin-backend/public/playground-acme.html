@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GraphQL Playground - Proyecto</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/graphql-playground-react/build/static/css/index.css" />
+  <link rel="shortcut icon" href="https://cdn.jsdelivr.net/npm/graphql-playground-react/build/favicon.png" />
+  <script src="https://cdn.jsdelivr.net/npm/graphql-playground-react/build/static/js/middleware.js"></script>
+</head>
+<body>
+  <div id="root">
+    <style>
+      body {
+        background-color: rgb(23, 42, 58);
+        font-family: Open Sans, sans-serif;
+        height: 90vh;
+      }
+      #root {
+        height: 100%;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .loading {
+        font-size: 32px;
+        font-weight: 200;
+        color: rgba(255, 255, 255, 0.6);
+        margin-left: 20px;
+      }
+      img {
+        width: 78px;
+        height: 78px;
+      }
+      .title {
+        font-weight: 400;
+      }
+      #error-message {
+        color: #ff5a5a;
+        margin-top: 20px;
+        font-size: 16px;
+        max-width: 500px;
+        text-align: center;
+      }
+      #debug-panel {
+        margin-top: 20px;
+        background-color: rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
+        padding: 12px;
+        color: #66d9ef;
+        text-align: left;
+        font-family: monospace;
+        max-width: 600px;
+        display: none;
+      }
+      .debug-title {
+        font-weight: bold;
+        color: white;
+        margin-bottom: 8px;
+      }
+      .debug-btn {
+        background-color: #4CAF50;
+        border: none;
+        color: white;
+        padding: 8px 16px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 14px;
+        margin: 10px 2px;
+        cursor: pointer;
+        border-radius: 4px;
+      }
+    </style>
+    <div style="display: flex; flex-direction: column; align-items: center;">
+      <div style="display: flex; align-items: center;">
+        <img src="https://cdn.jsdelivr.net/npm/graphql-playground-react/build/logo.png" alt="GraphQL Playground Logo">
+        <div class="loading">
+          Loading <span class="title">GraphQL Playground</span>...
+        </div>
+      </div>
+      <div id="error-message"></div>
+      <div id="connection-info" style="color: #66d9ef; margin-top: 10px; font-size: 14px;"></div>
+      <button id="debug-toggle" class="debug-btn" style="display: none;">Mostrar diagnóstico</button>
+      <button id="repair-btn" class="debug-btn" style="display: none; background-color: #f59e0b;">Reparar base de datos</button>
+      <div id="debug-panel"></div>
+    </div>
+  </div>
+  <script>
+    window.addEventListener('load', function (event) {
+      const root = document.getElementById('root');
+      root.classList.add('playgroundIn');
+      
+      // Elementos UI
+      const errorMsg = document.getElementById('error-message');
+      const connectionInfo = document.getElementById('connection-info');
+      const debugPanel = document.getElementById('debug-panel');
+      const debugToggle = document.getElementById('debug-toggle');
+      const repairBtn = document.getElementById('repair-btn');
+      
+      // Toggle para el panel de diagnóstico
+      debugToggle.addEventListener('click', function() {
+        if (debugPanel.style.display === 'none') {
+          debugPanel.style.display = 'block';
+          debugToggle.innerText = 'Ocultar diagnóstico';
+        } else {
+          debugPanel.style.display = 'none';
+          debugToggle.innerText = 'Mostrar diagnóstico';
+        }
+      });
+      
+      // Extract project ID from the URL
+      const pathParts = window.location.pathname.split('/');
+      const projectId = pathParts[2]; // Expected path: /projects/:projectId/playground-acme
+      
+      if (!projectId || isNaN(parseInt(projectId))) {
+        errorMsg.textContent = 'ID de proyecto inválido en la URL';
+        debugToggle.style.display = 'block';
+        debugPanel.innerHTML = `
+          <div class="debug-title">Diagnóstico de URL:</div>
+          <div>URL actual: ${window.location.href}</div>
+          <div>Ruta: ${window.location.pathname}</div>
+          <div>Partes: ${JSON.stringify(pathParts)}</div>
+          <div>Project ID extraído: ${projectId}</div>
+        `;
+        return;
+      }
+      
+      // Diagnóstico de conexión
+      fetch(`/check-project-db/${projectId}`)
+        .then(res => res.json())
+        .then(data => {
+          debugToggle.style.display = 'block';
+          debugPanel.innerHTML = `
+            <div class="debug-title">Diagnóstico de conexión:</div>
+            <pre>${JSON.stringify(data, null, 2)}</pre>
+          `;
+        })
+        .catch(err => {
+          debugToggle.style.display = 'block';
+          debugPanel.innerHTML = `
+            <div class="debug-title">Error de diagnóstico:</div>
+            <div>${err.message}</div>
+          `;
+        });
+      
+      const endpoint = `/projects/${projectId}/graphql`;
+      const subscriptionEndpoint = `/projects/${projectId}/subscriptions`;
+      
+      // Display connection info
+      connectionInfo.textContent = `Conectando a: ${endpoint} (Proyecto ID: ${projectId})`;
+      
+      try {
+        GraphQLPlayground.init(root, {
+          endpoint: endpoint,
+          subscriptionEndpoint: subscriptionEndpoint,
+          settings: {
+            'request.credentials': 'include',
+            'tracing.hideTracingResponse': false,
+            'editor.theme': 'dark',
+            'editor.fontSize': 14,
+            'editor.reuseHeaders': true,
+            'general.betaUpdates': false,
+            'editor.cursorShape': 'line',
+          }
+        });
+      } catch (error) {
+        errorMsg.textContent = `Error al inicializar playground: ${error.message}`;
+        console.error('Error de inicialización del playground:', error);
+      }
+      
+      // Comprobar si hay errores después de un tiempo
+      setTimeout(() => {
+        if (document.querySelector('.errorContainer')) {
+          errorMsg.innerHTML = `
+            <div>No se pudo conectar al servidor GraphQL. Verificando la base de datos...</div>
+          `;
+          
+          // Intentar obtener información de diagnóstico desde la API
+          fetch(`/check-project-db/${projectId}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data.status === 'success') {
+                errorMsg.innerHTML += `
+                  <div style="margin-top: 10px;">La base de datos existe y contiene las tablas: ${data.tables.join(', ')}</div>
+                  <div>Sin embargo, el servicio GraphQL no puede conectarse.</div>
+                `;
+                // Mostrar botón de reparación
+                repairBtn.style.display = 'inline-block';
+                repairBtn.addEventListener('click', function() {
+                  repairBtn.disabled = true;
+                  repairBtn.textContent = 'Reparando...';
+                  
+                  fetch(`/repair-project-db/${projectId}`)
+                    .then(res => res.json())
+                    .then(repairData => {
+                      if (repairData.status === 'success') {
+                        errorMsg.innerHTML += `
+                          <div style="margin-top: 10px; color: #4CAF50;">
+                            <strong>Base de datos reparada correctamente:</strong>
+                            <ul style="text-align: left; margin-top: 5px;">
+                              ${repairData.actions.map(a => `<li>${a}</li>`).join('')}
+                            </ul>
+                            <div style="margin-top: 5px;">Recargando en 3 segundos...</div>
+                          </div>
+                        `;
+                        setTimeout(() => window.location.reload(), 3000);
+                      } else {
+                        errorMsg.innerHTML += `
+                          <div style="margin-top: 10px; color: #f44336;">
+                            Error al reparar: ${repairData.message}
+                          </div>
+                        `;
+                        repairBtn.disabled = false;
+                        repairBtn.textContent = 'Intentar reparar de nuevo';
+                      }
+                    })
+                    .catch(err => {
+                      errorMsg.innerHTML += `
+                        <div style="margin-top: 10px; color: #f44336;">
+                          Error al reparar: ${err.message}
+                        </div>
+                      `;
+                      repairBtn.disabled = false;
+                      repairBtn.textContent = 'Intentar reparar de nuevo';
+                    });
+                });
+              } else {
+                errorMsg.innerHTML += `
+                  <div style="margin-top: 10px;">Error con la base de datos: ${data.message}</div>
+                `;
+                // Mostrar botón de reparación
+                repairBtn.style.display = 'inline-block';
+                repairBtn.addEventListener('click', function() {
+                  repairBtn.disabled = true;
+                  repairBtn.textContent = 'Reparando...';
+                  
+                  fetch(`/repair-project-db/${projectId}`)
+                    .then(res => res.json())
+                    .then(repairData => {
+                      if (repairData.status === 'success') {
+                        errorMsg.innerHTML += `
+                          <div style="margin-top: 10px; color: #4CAF50;">
+                            <strong>Base de datos reparada correctamente:</strong>
+                            <ul style="text-align: left; margin-top: 5px;">
+                              ${repairData.actions.map(a => `<li>${a}</li>`).join('')}
+                            </ul>
+                            <div style="margin-top: 5px;">Recargando en 3 segundos...</div>
+                          </div>
+                        `;
+                        setTimeout(() => window.location.reload(), 3000);
+                      } else {
+                        errorMsg.innerHTML += `
+                          <div style="margin-top: 10px; color: #f44336;">
+                            Error al reparar: ${repairData.message}
+                          </div>
+                        `;
+                        repairBtn.disabled = false;
+                        repairBtn.textContent = 'Intentar reparar de nuevo';
+                      }
+                    })
+                    .catch(err => {
+                      errorMsg.innerHTML += `
+                        <div style="margin-top: 10px; color: #f44336;">
+                          Error al reparar: ${err.message}
+                        </div>
+                      `;
+                      repairBtn.disabled = false;
+                      repairBtn.textContent = 'Intentar reparar de nuevo';
+                    });
+                });
+              }
+              
+              debugToggle.style.display = 'block';
+            })
+            .catch(err => {
+              errorMsg.innerHTML += `
+                <div style="margin-top: 10px;">Error al verificar la base de datos: ${err.message}</div>
+              `;
+              debugToggle.style.display = 'block';
+            });
+        }
+      }, 3000);
+    });
+  </script>
+</body>
+</html> 
